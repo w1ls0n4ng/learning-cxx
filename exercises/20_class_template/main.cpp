@@ -1,4 +1,5 @@
 ﻿#include "../exercise.h"
+#include <cstring>
 
 // READ: 类模板 <https://zh.cppreference.com/w/cpp/language/class_template>
 
@@ -10,8 +11,12 @@ struct Tensor4D {
     Tensor4D(unsigned int const shape_[4], T const *data_) {
         unsigned int size = 1;
         // TODO: 填入正确的 shape 并计算 size
+        for (int i=0; i<4; i++){
+            shape[i] = shape_[i];
+            size *= shape_[i];
+        }
         data = new T[size];
-        std::memcpy(data, data_, size * sizeof(T));
+        memcpy(data, data_, size * sizeof(T));
     }
     ~Tensor4D() {
         delete[] data;
@@ -28,6 +33,34 @@ struct Tensor4D {
     // 则 `this` 与 `others` 相加时，3 个形状为 `[1, 2, 1, 4]` 的子张量各自与 `others` 对应项相加。
     Tensor4D &operator+=(Tensor4D const &others) {
         // TODO: 实现单向广播的加法
+        unsigned int this_size = 1;
+        unsigned int others_size = 1;
+
+        // 计算 this 和 others 的大小
+        for (int i = 0; i < 4; i++) {
+            this_size *= shape[i];
+            if (others.shape[i] != 1) {
+                ASSERT(others.shape[i] == shape[i], "Shape mismatch for broadcasting");
+            }
+            others_size *= others.shape[i];
+        }
+
+        for (unsigned int i = 0; i < this_size; ++i) {
+            unsigned int idx = i;
+            unsigned int other_idx = 0;
+            unsigned int other_stride = 1;
+
+            // 计算 others 中的索引
+            for (int dim = 3; dim >= 0; --dim) {
+                unsigned int stride = shape[dim];
+                unsigned int other_dim_index = (others.shape[dim] == 1) ? 0 : (idx % stride);
+                other_idx += other_dim_index * other_stride;
+                other_stride *= (others.shape[dim] == 1) ? 1 : others.shape[dim];
+                idx /= stride;
+            }
+
+            data[i] += others.data[other_idx];
+        }
         return *this;
     }
 };
